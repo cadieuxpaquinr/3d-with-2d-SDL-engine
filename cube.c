@@ -173,9 +173,9 @@ int main(int argc, char **argv)
             key = &event.key;
             switch (key->keysym.sym)
             {
-            case SDLK_LEFT:
+            case SDLK_RIGHT:
                angle = -1;
-               fprintf(stdout, "lefty %f\n", angle);
+               fprintf(stdout, "right %f\n", angle);
                SDL_SetRenderDrawColor(
                    renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
                SDL_RenderClear(renderer);
@@ -195,9 +195,9 @@ int main(int argc, char **argv)
                fprintf(stdout, "Projected cube -------\n");
                cube_print_infos(projected_cube);
                break;
-            case SDLK_RIGHT:
+            case SDLK_LEFT:
                angle = 1;
-               fprintf(stdout, "righty %f\n", angle);
+               fprintf(stdout, "left %f\n", angle);
                SDL_SetRenderDrawColor(
                    renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
                SDL_RenderClear(renderer);
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
                break;
             case SDLK_UP:
                angle = 1;
-               fprintf(stdout, "righty %f\n", angle);
+               fprintf(stdout, "up %f\n", angle);
                SDL_SetRenderDrawColor(
                    renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
                SDL_RenderClear(renderer);
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
                for (int i = 0; i < 8; i++)
                {
                   cube.vertices[i].y += 0.1;
-                  cube.vertices[i] = rotate_point(cube.vertices[i], angle);
+                  // cube.vertices[i] = rotate_point(cube.vertices[i], angle);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
@@ -241,7 +241,7 @@ int main(int argc, char **argv)
                break;
             case SDLK_DOWN:
                angle = -1;
-               fprintf(stdout, "righty %f\n", angle);
+               fprintf(stdout, "down %f\n", angle);
                SDL_SetRenderDrawColor(
                    renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
                SDL_RenderClear(renderer);
@@ -250,7 +250,7 @@ int main(int argc, char **argv)
                for (int i = 0; i < 8; i++)
                {
                   cube.vertices[i].y -= 0.1;
-                  cube.vertices[i] = rotate_point(cube.vertices[i], angle);
+                  // cube.vertices[i] = rotate_point(cube.vertices[i], angle);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
