@@ -17,6 +17,8 @@
  * y' = y/z
  */
 
+#define NUM_VERTICES 8
+
 static volatile sig_atomic_t keep_running = 1;
 
 static void handle_sigint(int signum)
@@ -33,7 +35,7 @@ struct vertice
 
 struct cube
 {
-   struct vertice vertices[8];
+   struct vertice vertices[NUM_VERTICES];
 };
 
 struct vertice projection(struct vertice v)
@@ -54,11 +56,12 @@ struct vertice screen_xy(struct vertice v)
 
 #define DEG2RAD 57.295780
 
-struct vertice rotate_point(struct vertice v, double angle)
+struct vertice rotate_point(struct vertice v, double angle, double z_avg)
 {
    struct vertice temp;
-   temp.x = v.x * cos(angle / DEG2RAD) - v.z * sin(angle / DEG2RAD);
-   temp.z = v.x * sin(angle / DEG2RAD) + v.z * cos(angle / DEG2RAD);
+   temp.x = v.x * cos(angle / DEG2RAD) - (v.z - z_avg) * sin(angle / DEG2RAD);
+   temp.z = v.x * sin(angle / DEG2RAD) + (v.z - z_avg) * cos(angle / DEG2RAD);
+   temp.z += z_avg;
    temp.y = v.y;
    return temp;
 }
@@ -101,7 +104,7 @@ void draw_cube(SDL_Renderer *renderer, struct cube cube)
 
 void cube_print_infos(struct cube c)
 {
-   for (int i = 0; i < 8; i++)
+   for (int i = 0; i < NUM_VERTICES; i++)
    {
       fprintf(stdout, "x: %f y: %f z: %f\n", c.vertices[i].x, c.vertices[i].y,
               c.vertices[i].z);
@@ -141,7 +144,7 @@ int main(int argc, char **argv)
 
    struct cube projected_cube;
 
-   for (int i = 0; i < 8; i++)
+   for (int i = 0; i < NUM_VERTICES; i++)
    {
       projected_cube.vertices[i] = screen_xy(projection(cube.vertices[i]));
       // projected_cube.vertices[i] =
@@ -150,7 +153,12 @@ int main(int argc, char **argv)
 
    draw_cube(renderer, projected_cube);
    SDL_RenderPresent(renderer);
-
+   double z_total = 0;
+   for (int i = 0; i < NUM_VERTICES; i++)
+   {
+      z_total += cube.vertices[i].z;
+   }
+   double z_avg = z_total/NUM_VERTICES;
    signal(SIGINT, handle_sigint);
    time_t timer;
    time_t last_time;
@@ -181,10 +189,10 @@ int main(int argc, char **argv)
                SDL_RenderClear(renderer);
                SDL_SetRenderDrawColor(
                    renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-               for (int i = 0; i < 8; i++)
+               for (int i = 0; i < NUM_VERTICES; i++)
                {
-                  cube.vertices[i].x += 0.1;
-                  cube.vertices[i] = rotate_point(cube.vertices[i], angle);
+                  // cube.vertices[i].x += 0.1;
+                  cube.vertices[i] = rotate_point(cube.vertices[i], angle, z_avg);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
@@ -203,10 +211,10 @@ int main(int argc, char **argv)
                SDL_RenderClear(renderer);
                SDL_SetRenderDrawColor(
                    renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-               for (int i = 0; i < 8; i++)
+               for (int i = 0; i < NUM_VERTICES; i++)
                {
-                  cube.vertices[i].x -= 0.1;
-                  cube.vertices[i] = rotate_point(cube.vertices[i], angle);
+                  // cube.vertices[i].x -= 0.1;
+                  cube.vertices[i] = rotate_point(cube.vertices[i], angle, z_avg);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
@@ -225,7 +233,7 @@ int main(int argc, char **argv)
                SDL_RenderClear(renderer);
                SDL_SetRenderDrawColor(
                    renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-               for (int i = 0; i < 8; i++)
+               for (int i = 0; i < NUM_VERTICES; i++)
                {
                   cube.vertices[i].y += 0.1;
                   // cube.vertices[i] = rotate_point(cube.vertices[i], angle);
@@ -247,7 +255,7 @@ int main(int argc, char **argv)
                SDL_RenderClear(renderer);
                SDL_SetRenderDrawColor(
                    renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-               for (int i = 0; i < 8; i++)
+               for (int i = 0; i < NUM_VERTICES; i++)
                {
                   cube.vertices[i].y -= 0.1;
                   // cube.vertices[i] = rotate_point(cube.vertices[i], angle);
@@ -285,7 +293,7 @@ int main(int argc, char **argv)
       // SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
       // SDL_RenderClear(renderer);
       // SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-      // for (int i = 0; i < 8; i++) {
+      // for (int i = 0; i < NUM_VERTICES; i++) {
       //   angle += 2 * 3.1416 * (deltaTime/60);
       //   screen_xy(projection(rotate_point(&cube.vertices[i], angle)));
       //   // projection(&cube.vertices[i]);
