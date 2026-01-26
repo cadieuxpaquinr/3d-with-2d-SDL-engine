@@ -2,6 +2,7 @@ CC ?= cc
 CFLAGS ?= -Wall -Wextra -pedantic -O2
 CFLAGS += $(shell sdl2-config --cflags)
 LDLIBS += $(shell sdl2-config --libs)
+LDLIBS += -lm
 
 TARGET := cube
 SRC := cube.c
