@@ -18,6 +18,7 @@
  */
 
 #define NUM_VERTICES 8
+#define ANGLE_VAL 3
 
 static volatile sig_atomic_t keep_running = 1;
 
@@ -56,13 +57,23 @@ struct vertice screen_xy(struct vertice v)
 
 #define DEG2RAD 57.295780
 
-struct vertice rotate_point(struct vertice v, double angle, double z_avg)
+struct vertice rotate_x(struct vertice v, double angle, double z_avg)
 {
    struct vertice temp;
    temp.x = v.x * cos(angle / DEG2RAD) - (v.z - z_avg) * sin(angle / DEG2RAD);
    temp.z = v.x * sin(angle / DEG2RAD) + (v.z - z_avg) * cos(angle / DEG2RAD);
    temp.z += z_avg;
    temp.y = v.y;
+   return temp;
+}
+
+struct vertice rotate_y(struct vertice v, double angle, double z_avg)
+{
+   struct vertice temp;
+   temp.y = v.y * cos(angle / DEG2RAD) - (v.z - z_avg) * sin(angle / DEG2RAD);
+   temp.z = v.y * sin(angle / DEG2RAD) + (v.z - z_avg) * cos(angle / DEG2RAD);
+   temp.z += z_avg;
+   temp.x = v.x;
    return temp;
 }
 
@@ -102,6 +113,18 @@ void draw_cube(SDL_Renderer *renderer, struct cube cube)
                       cube.vertices[7].x, cube.vertices[7].y);
 }
 
+void clear_screen(SDL_Renderer *renderer)
+{
+   SDL_SetRenderDrawColor(
+         renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
+   SDL_RenderClear(renderer);
+   SDL_SetRenderDrawColor(
+         renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
+}
+
+/**
+   Debugging helper
+*/
 void cube_print_infos(struct cube c)
 {
    for (int i = 0; i < NUM_VERTICES; i++)
@@ -113,6 +136,23 @@ void cube_print_infos(struct cube c)
 
 int main(int argc, char **argv)
 {
+   // cube initial position
+   struct cube cube = {
+      .vertices = {
+         // x,y,z
+         {-0.3, 0.3, 1},
+         {0.3, 0.3, 1},
+         {-0.3, -0.3, 1},
+         {0.3, -0.3, 1},
+         {-0.3, 0.3, 1.6},
+         {0.3, 0.3, 1.6},
+         {-0.3, -0.3, 1.6},
+         {0.3, -0.3, 1.6},
+      }};
+   // separate projected cube to keep original values
+   struct cube projected_cube;
+
+   //sdl initialisation for 2D engine
    if (0 != SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS))
    {
       fprintf(stderr, "SDL error: %s\n", SDL_GetError());
@@ -121,54 +161,32 @@ int main(int argc, char **argv)
    fprintf(stdout, "Creating window\n");
    SDL_Window *window =
        SDL_CreateWindow("main_window", 0, 0, 1000, 1000, SDL_WINDOW_RESIZABLE);
-   (window != NULL)
-       ? fprintf(stdout, "Window context created\n")
-       : fprintf(stderr, "Window context failed\n");
+   (window != NULL) ? fprintf(stdout, "Window context created\n") : fprintf(stderr, "Window context failed\n");
    SDL_Renderer *renderer = SDL_CreateRenderer(window, 0, NULL);
    if (!renderer)
       fprintf(stderr, "no renderer");
+   
    SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-
-   struct cube cube = {
-       .vertices = {
-           // x,y,z
-           {-0.1, 0.1, 1},
-           {0.1, 0.1, 1},
-           {-0.1, -0.1, 1},
-           {0.1, -0.1, 1},
-           {-0.1, 0.1, 1.2},
-           {0.1, 0.1, 1.2},
-           {-0.1, -0.1, 1.2},
-           {0.1, -0.1, 1.2},
-       }};
-
-   struct cube projected_cube;
-
+   // initial cube drawn on screen
    for (int i = 0; i < NUM_VERTICES; i++)
    {
       projected_cube.vertices[i] = screen_xy(projection(cube.vertices[i]));
-      // projected_cube.vertices[i] =
-      //  screen_xy(projection(rotate_point(cube.vertices[i], 40)));
    }
-
    draw_cube(renderer, projected_cube);
    SDL_RenderPresent(renderer);
+
+   // compute Z average for later rotation
+   // rotation is around 0,0,0 and we want the cube to rotate on itself
    double z_total = 0;
    for (int i = 0; i < NUM_VERTICES; i++)
    {
       z_total += cube.vertices[i].z;
    }
    double z_avg = z_total/NUM_VERTICES;
+
    signal(SIGINT, handle_sigint);
-   time_t timer;
-   time_t last_time;
-   time(&last_time);
    double angle = 0;
-   Uint64 NOW = SDL_GetPerformanceCounter();
-   Uint64 LAST = 0;
-   double deltaTime = 0;
-   cube_print_infos(cube);
-   cube_print_infos(projected_cube);
+   SDL_KeyboardEvent *key;
    while (keep_running)
    {
       SDL_Event event;
@@ -177,131 +195,67 @@ int main(int argc, char **argv)
          switch (event.type)
          {
          case SDL_KEYDOWN:
-            SDL_KeyboardEvent *key;
             key = &event.key;
             switch (key->keysym.sym)
             {
             case SDLK_RIGHT:
-               angle = -1;
-               fprintf(stdout, "right %f\n", angle);
-               SDL_SetRenderDrawColor(
-                   renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
-               SDL_RenderClear(renderer);
-               SDL_SetRenderDrawColor(
-                   renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
+               angle = -ANGLE_VAL;
+               clear_screen(renderer);
                for (int i = 0; i < NUM_VERTICES; i++)
                {
-                  // cube.vertices[i].x += 0.1;
-                  cube.vertices[i] = rotate_point(cube.vertices[i], angle, z_avg);
+                  cube.vertices[i] = rotate_x(cube.vertices[i], angle, z_avg);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
                draw_cube(renderer, projected_cube);
                SDL_RenderPresent(renderer);
-               fprintf(stdout, "Regular cube -------\n");
-               cube_print_infos(cube);
-               fprintf(stdout, "Projected cube -------\n");
-               cube_print_infos(projected_cube);
                break;
             case SDLK_LEFT:
-               angle = 1;
-               fprintf(stdout, "left %f\n", angle);
-               SDL_SetRenderDrawColor(
-                   renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
-               SDL_RenderClear(renderer);
-               SDL_SetRenderDrawColor(
-                   renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
+               angle = ANGLE_VAL;
+               clear_screen(renderer);
                for (int i = 0; i < NUM_VERTICES; i++)
                {
-                  // cube.vertices[i].x -= 0.1;
-                  cube.vertices[i] = rotate_point(cube.vertices[i], angle, z_avg);
+                  cube.vertices[i] = rotate_x(cube.vertices[i], angle, z_avg);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
                draw_cube(renderer, projected_cube);
                SDL_RenderPresent(renderer);
-               fprintf(stdout, "Regular cube -------\n");
-               cube_print_infos(cube);
-               fprintf(stdout, "Projected cube -------\n");
-               cube_print_infos(projected_cube);
                break;
             case SDLK_UP:
-               angle = 1;
-               fprintf(stdout, "up %f\n", angle);
-               SDL_SetRenderDrawColor(
-                   renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
-               SDL_RenderClear(renderer);
-               SDL_SetRenderDrawColor(
-                   renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
+               angle = ANGLE_VAL;
+               clear_screen(renderer);
                for (int i = 0; i < NUM_VERTICES; i++)
                {
-                  cube.vertices[i].y += 0.1;
-                  // cube.vertices[i] = rotate_point(cube.vertices[i], angle);
+                  cube.vertices[i] = rotate_y(cube.vertices[i], angle, z_avg);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
                draw_cube(renderer, projected_cube);
                SDL_RenderPresent(renderer);
-               fprintf(stdout, "Regular cube -------\n");
-               cube_print_infos(cube);
-               fprintf(stdout, "Projected cube -------\n");
-               cube_print_infos(projected_cube);
                break;
             case SDLK_DOWN:
-               angle = -1;
-               fprintf(stdout, "down %f\n", angle);
-               SDL_SetRenderDrawColor(
-                   renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
-               SDL_RenderClear(renderer);
-               SDL_SetRenderDrawColor(
-                   renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
+               angle = -ANGLE_VAL;
+               clear_screen(renderer);
                for (int i = 0; i < NUM_VERTICES; i++)
                {
-                  cube.vertices[i].y -= 0.1;
-                  // cube.vertices[i] = rotate_point(cube.vertices[i], angle);
+                  cube.vertices[i] = rotate_y(cube.vertices[i], angle, z_avg);
                   projected_cube.vertices[i] =
                       screen_xy(projection(cube.vertices[i]));
                }
                draw_cube(renderer, projected_cube);
                SDL_RenderPresent(renderer);
-               fprintf(stdout, "Regular cube -------\n");
-               cube_print_infos(cube);
-               fprintf(stdout, "Projected cube -------\n");
-               cube_print_infos(projected_cube);
                break;
             default:
                break;
             }
             break;
-
          case SDL_KEYUP:
-            // printf("Key release detected\n");
             break;
-
          default:
             break;
          }
       }
-
-      // LAST = NOW;
-      // NOW = SDL_GetPerformanceCounter();
-      // deltaTime =
-      //     (double)((NOW - LAST) * 1000 /
-      //     (double)SDL_GetPerformanceFrequency());
-
-      // fprintf(stdout, "deltaTime: %f\n", deltaTime);
-      // SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // black
-      // SDL_RenderClear(renderer);
-      // SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
-      // for (int i = 0; i < NUM_VERTICES; i++) {
-      //   angle += 2 * 3.1416 * (deltaTime/60);
-      //   screen_xy(projection(rotate_point(&cube.vertices[i], angle)));
-      //   // projection(&cube.vertices[i]);
-      //   // screen_xy(&cube.vertices[i]);
-      //   draw_cube(renderer, cube);
-      // }
-      // SDL_RenderPresent(renderer);
-      // fprintf(stdout, "Frame updated\n");
    }
    SDL_Quit();
 }
