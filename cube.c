@@ -10,13 +10,9 @@
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
-#include <time.h>
 
-/**
- * x' = x/z
- * y' = y/z
- */
-
+ // feel free to change number of vertices
+ // if not rendering a cube/rectangle
 #define NUM_VERTICES 8
 #define ANGLE_VAL 3
 
@@ -37,46 +33,93 @@ struct vertice
 struct cube
 {
    struct vertice vertices[NUM_VERTICES];
+   int num_vertices;
 };
 
-struct vertice projection(struct vertice v)
+void cube_print_infos(struct cube c);
+
+/**
+* Projects 3D object onto 2D scene
+* x' = x/z
+* y' = y/z
+*/
+struct cube projection(struct cube c)
 {
-   struct vertice temp;
-   temp.x = v.x / v.z;
-   temp.y = v.y / v.z;
+   struct cube temp;
+   temp.num_vertices = c.num_vertices;
+   for (int i = 0; i < c.num_vertices; i++)
+   {
+      struct vertice *t = &temp.vertices[i];
+      struct vertice *v = &c.vertices[i];
+      t->x = v->x / v->z;
+      t->y = v->y / v->z;
+   }
    return temp;
 }
 
-struct vertice screen_xy(struct vertice v)
+struct cube screen_xy(struct cube c)
 {
-   struct vertice temp;
-   temp.x = (v.x + 1) / 2 * 1000;
-   temp.y = (1 - (v.y + 1) / 2) * 1000;
+   struct cube temp;
+   temp.num_vertices = c.num_vertices;
+   for (int i = 0; i < c.num_vertices; i++)
+   {
+      struct vertice *t = &temp.vertices[i];
+      struct vertice *v = &c.vertices[i];
+      t->x = (v->x + 1) / 2 * 1000;
+      t->y = (1 - (v->y + 1) / 2) * 1000;
+   }
    return temp;
 }
 
 #define DEG2RAD 57.295780
 
-struct vertice rotate_x(struct vertice v, double angle, double z_avg)
+/**
+*  Rotates 2D object as if it were 3D
+*     x' = x cos θ − z sin θ
+*     z' = x sin θ + z cos θ
+*/
+struct cube rotate_x(struct cube c, double angle, double z_avg)
 {
-   struct vertice temp;
-   temp.x = v.x * cos(angle / DEG2RAD) - (v.z - z_avg) * sin(angle / DEG2RAD);
-   temp.z = v.x * sin(angle / DEG2RAD) + (v.z - z_avg) * cos(angle / DEG2RAD);
-   temp.z += z_avg;
-   temp.y = v.y;
+   struct cube temp;
+   temp.num_vertices = c.num_vertices;
+   for (int i = 0; i < c.num_vertices; i++)
+   {
+      struct vertice *t = &temp.vertices[i];
+      struct vertice *v = &c.vertices[i];
+      t->x = v->x * cos(angle / DEG2RAD) - (v->z - z_avg) * sin(angle / DEG2RAD);
+      t->z = v->x * sin(angle / DEG2RAD) + (v->z - z_avg) * cos(angle / DEG2RAD);
+      t->z += z_avg;
+      t->y = v->y;
+   }
    return temp;
 }
 
-struct vertice rotate_y(struct vertice v, double angle, double z_avg)
+/**
+*  Rotates 2D object as if it were 3D but on Y axis instead
+*     y' = y cos θ − z sin θ
+*     z' = y sin θ + z cos θ
+*  x stays the same
+*/
+struct cube rotate_y(struct cube c, double angle, double z_avg)
 {
-   struct vertice temp;
-   temp.y = v.y * cos(angle / DEG2RAD) - (v.z - z_avg) * sin(angle / DEG2RAD);
-   temp.z = v.y * sin(angle / DEG2RAD) + (v.z - z_avg) * cos(angle / DEG2RAD);
-   temp.z += z_avg;
-   temp.x = v.x;
+   struct cube temp;
+   temp.num_vertices = c.num_vertices;
+   for (int i = 0; i < c.num_vertices; i++)
+   {
+      struct vertice *t = &temp.vertices[i];
+      struct vertice *v = &c.vertices[i];
+      t->y = v->y * cos(angle / DEG2RAD) - (v->z - z_avg) * sin(angle / DEG2RAD);
+      t->z = v->y * sin(angle / DEG2RAD) + (v->z - z_avg) * cos(angle / DEG2RAD);
+      t->z += z_avg;
+      t->x = v->x;
+   }
    return temp;
 }
 
+/**
+* Basically just calls SDL to draw lines between vertices
+* This only supports a cube
+*/
 void draw_cube(SDL_Renderer *renderer, struct cube cube)
 {
    // drawing cube lines from vertices logic
@@ -111,6 +154,7 @@ void draw_cube(SDL_Renderer *renderer, struct cube cube)
                       cube.vertices[5].x, cube.vertices[5].y);
    SDL_RenderDrawLine(renderer, cube.vertices[3].x, cube.vertices[3].y,
                       cube.vertices[7].x, cube.vertices[7].y);
+   SDL_RenderPresent(renderer);
 }
 
 void clear_screen(SDL_Renderer *renderer)
@@ -136,7 +180,7 @@ void cube_print_infos(struct cube c)
 
 int main(int argc, char **argv)
 {
-   // cube initial position
+   // cube initial position YOU CAN CHANGE THESE!
    struct cube cube = {
       .vertices = {
          // x,y,z
@@ -148,9 +192,9 @@ int main(int argc, char **argv)
          {0.3, 0.3, 1.6},
          {-0.3, -0.3, 1.6},
          {0.3, -0.3, 1.6},
-      }};
-   // separate projected cube to keep original values
-   struct cube projected_cube;
+      },
+      .num_vertices = NUM_VERTICES,
+   };
 
    //sdl initialisation for 2D engine
    if (0 != SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS))
@@ -168,12 +212,7 @@ int main(int argc, char **argv)
    
    SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // red
    // initial cube drawn on screen
-   for (int i = 0; i < NUM_VERTICES; i++)
-   {
-      projected_cube.vertices[i] = screen_xy(projection(cube.vertices[i]));
-   }
-   draw_cube(renderer, projected_cube);
-   SDL_RenderPresent(renderer);
+   draw_cube(renderer, screen_xy(projection(cube)));
 
    // compute Z average for later rotation
    // rotation is around 0,0,0 and we want the cube to rotate on itself
@@ -196,55 +235,32 @@ int main(int argc, char **argv)
          {
          case SDL_KEYDOWN:
             key = &event.key;
+            clear_screen(renderer);
             switch (key->keysym.sym)
             {
             case SDLK_RIGHT:
                angle = -ANGLE_VAL;
-               clear_screen(renderer);
-               for (int i = 0; i < NUM_VERTICES; i++)
-               {
-                  cube.vertices[i] = rotate_x(cube.vertices[i], angle, z_avg);
-                  projected_cube.vertices[i] =
-                      screen_xy(projection(cube.vertices[i]));
-               }
-               draw_cube(renderer, projected_cube);
-               SDL_RenderPresent(renderer);
+               // rotation on X axis
+               cube = rotate_x(cube, angle, z_avg);
+               draw_cube(renderer, screen_xy(projection(cube)));
                break;
             case SDLK_LEFT:
                angle = ANGLE_VAL;
-               clear_screen(renderer);
-               for (int i = 0; i < NUM_VERTICES; i++)
-               {
-                  cube.vertices[i] = rotate_x(cube.vertices[i], angle, z_avg);
-                  projected_cube.vertices[i] =
-                      screen_xy(projection(cube.vertices[i]));
-               }
-               draw_cube(renderer, projected_cube);
-               SDL_RenderPresent(renderer);
+               // rotation on X axis
+               cube = rotate_x(cube, angle, z_avg);
+               draw_cube(renderer, screen_xy(projection(cube)));
                break;
             case SDLK_UP:
                angle = ANGLE_VAL;
-               clear_screen(renderer);
-               for (int i = 0; i < NUM_VERTICES; i++)
-               {
-                  cube.vertices[i] = rotate_y(cube.vertices[i], angle, z_avg);
-                  projected_cube.vertices[i] =
-                      screen_xy(projection(cube.vertices[i]));
-               }
-               draw_cube(renderer, projected_cube);
-               SDL_RenderPresent(renderer);
+               // rotation on Y axis
+               cube = rotate_y(cube, angle, z_avg);
+               draw_cube(renderer, screen_xy(projection(cube)));
                break;
             case SDLK_DOWN:
                angle = -ANGLE_VAL;
-               clear_screen(renderer);
-               for (int i = 0; i < NUM_VERTICES; i++)
-               {
-                  cube.vertices[i] = rotate_y(cube.vertices[i], angle, z_avg);
-                  projected_cube.vertices[i] =
-                      screen_xy(projection(cube.vertices[i]));
-               }
-               draw_cube(renderer, projected_cube);
-               SDL_RenderPresent(renderer);
+               // rotation on Y axis
+               cube = rotate_y(cube, angle, z_avg);
+               draw_cube(renderer, screen_xy(projection(cube)));
                break;
             default:
                break;
