@@ -220,10 +220,10 @@ int main()
       return 1;
    }
    fprintf(stdout, "Creating window\n");
-   SDL_Window *restrict window =
+   SDL_Window *window =
        SDL_CreateWindow("main_window", 0, 0, 1000, 1000, SDL_WINDOW_RESIZABLE);
    (window != NULL) ? fprintf(stdout, "Window context created\n") : fprintf(stderr, "Window context failed\n");
-   SDL_Renderer *restrict renderer = SDL_CreateRenderer(window, 0, 0);
+   SDL_Renderer *renderer = SDL_CreateRenderer(window, 0, 0);
    if (!renderer)
       fprintf(stderr, "no renderer");
    
