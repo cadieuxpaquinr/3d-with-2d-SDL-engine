@@ -66,8 +66,8 @@ struct cube projection(struct cube c)
    temp.num_vertices = c.num_vertices;
    for (int i = 0; i < c.num_vertices; i++)
    {
-      struct vertice *t = &temp.vertices[i];
-      struct vertice *v = &c.vertices[i];
+      struct vertice *restrict t = &temp.vertices[i];
+      struct vertice *restrict v = &c.vertices[i];
       t->x = v->x / v->z;
       t->y = v->y / v->z;
    }
@@ -80,8 +80,8 @@ struct cube screen_xy(struct cube c)
    temp.num_vertices = c.num_vertices;
    for (int i = 0; i < c.num_vertices; i++)
    {
-      struct vertice *t = &temp.vertices[i];
-      struct vertice *v = &c.vertices[i];
+      struct vertice *restrict t = &temp.vertices[i];
+      struct vertice *restrict v = &c.vertices[i];
       t->x = (v->x + 1) / 2 * 1000;
       t->y = (1 - (v->y + 1) / 2) * 1000;
    }
@@ -101,8 +101,8 @@ struct cube rotate_x(struct cube c, double angle, double z_avg)
    temp.num_vertices = c.num_vertices;
    for (int i = 0; i < c.num_vertices; i++)
    {
-      struct vertice *t = &temp.vertices[i];
-      struct vertice *v = &c.vertices[i];
+      struct vertice *restrict t = &temp.vertices[i];
+      struct vertice *restrict v = &c.vertices[i];
       t->x = v->x * cos(angle / DEG2RAD) - (v->z - z_avg) * sin(angle / DEG2RAD);
       t->z = v->x * sin(angle / DEG2RAD) + (v->z - z_avg) * cos(angle / DEG2RAD);
       t->z += z_avg;
@@ -123,8 +123,8 @@ struct cube rotate_y(struct cube c, double angle, double z_avg)
    temp.num_vertices = c.num_vertices;
    for (int i = 0; i < c.num_vertices; i++)
    {
-      struct vertice *t = &temp.vertices[i];
-      struct vertice *v = &c.vertices[i];
+      struct vertice *restrict t = &temp.vertices[i];
+      struct vertice *restrict v = &c.vertices[i];
       t->y = v->y * cos(angle / DEG2RAD) - (v->z - z_avg) * sin(angle / DEG2RAD);
       t->z = v->y * sin(angle / DEG2RAD) + (v->z - z_avg) * cos(angle / DEG2RAD);
       t->z += z_avg;
@@ -195,7 +195,7 @@ void cube_print_infos(struct cube c)
    }
 }
 
-int main(int argc, char **argv)
+int main()
 {
    // cube initial position YOU CAN CHANGE THESE!
    struct cube cube = {
@@ -220,10 +220,10 @@ int main(int argc, char **argv)
       return 1;
    }
    fprintf(stdout, "Creating window\n");
-   SDL_Window *window =
+   SDL_Window *restrict window =
        SDL_CreateWindow("main_window", 0, 0, 1000, 1000, SDL_WINDOW_RESIZABLE);
    (window != NULL) ? fprintf(stdout, "Window context created\n") : fprintf(stderr, "Window context failed\n");
-   SDL_Renderer *renderer = SDL_CreateRenderer(window, 0, NULL);
+   SDL_Renderer *restrict renderer = SDL_CreateRenderer(window, 0, 0);
    if (!renderer)
       fprintf(stderr, "no renderer");
    
@@ -242,7 +242,6 @@ int main(int argc, char **argv)
 
    signal(SIGINT, handle_sigint);
    double angle = 0;
-   SDL_KeyboardEvent *key;
    while (keep_running)
    {
       SDL_Event event;
@@ -251,9 +250,8 @@ int main(int argc, char **argv)
          switch (event.type)
          {
          case SDL_KEYDOWN:
-            key = &event.key;
             clear_screen(renderer);
-            switch (key->keysym.sym)
+            switch (event.key.keysym.sym)
             {
             case SDLK_RIGHT:
                angle = -ANGLE_VAL;
