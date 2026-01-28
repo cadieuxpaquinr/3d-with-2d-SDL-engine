@@ -1,6 +1,6 @@
 # Project 3D objects with a 2D engine
 
-![Project screenshot](cube.PNG)
+![Animated cube gif](animated_cube.gif)
 
 Use ↑ ↓ → ← keyboard arrows to rotate the cube
 
